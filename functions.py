@@ -1,9 +1,33 @@
-import requests, re, json
+import boto3.session
+import requests, re, json, boto3
+from botocore.exceptions import ClientError
 
-def get_spotify_top_playlist_result(query:str, api_key) -> str:
+def get_secret():
+    secret_name = "rapid_api/api_key"
+    region_name = "eu-north-1"
+
+    # Create a Secrests Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        raise e
+    
+    secret = get_secret_value_response['SecretString']
+    return secret
+
+
+def get_spotify_top_playlist_result(api_key) -> str:
     url = "https://spotify23.p.rapidapi.com/search/"
 
-    querystring = {"q":query,"type":"playlists","offset":"0","limit":"10","numberOfTopResults":"5"}
+    querystring = {"q":"global top 50","type":"playlists","offset":"0","limit":"1"}
 
     headers = {
         "X-RapidAPI-Key": api_key,
@@ -11,13 +35,16 @@ def get_spotify_top_playlist_result(query:str, api_key) -> str:
     }
 
     response = requests.get(url, headers=headers, params=querystring)
+    print(response.json())
+    # print(f"First API call response status code: {response.status_code}")
 
-    if response.status_code == 200:
-        data = response.json()
-        playlist_uri = data.get('playlists', {}).get('items', [{}])[0].get('data', {}).get('uri', None)
-        playlist_id = re.search(r'playlist:(\S+)', playlist_uri).group(1)
+    # playlist_id = None
+    # if response.status_code == 200:
+    #     data = response.json()
+    #     playlist_uri = data.get('playlists', {}).get('items', [{}])[0].get('data', {}).get('uri', None)
+    #     playlist_id = re.search(r'playlist:(\S+)', playlist_uri).group(1)
     
-    return playlist_id
+    # return playlist_id
 
 def get_playlist_tracks_raw_data(playlist_id:str, api_key) -> json:
     url = "https://spotify23.p.rapidapi.com/playlist_tracks/"
